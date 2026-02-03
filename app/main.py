@@ -1,22 +1,13 @@
-from datetime import datetime, timezone
+from flask import Flask
+
+app = Flask(__name__)
 
 
-def add(a: int, b: int) -> int:
-    return a + b
-
-
-def get_hello(name: str) -> str:
-    name = (name or "").strip() or "World"
-    return f"Hello, {name}!"
-
-
-def main() -> None:
-    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-    print(get_hello("Jenkins"))
-    print(f"Time: {now}")
-    print(f"2 + 3 = {add(2, 3)}")
+@app.route("/")
+def hello():
+    return "Hello World from Jenkins + Flask 🚀"
 
 
 if __name__ == "__main__":
-    
-    main()
+    # Listen on all interfaces so it works in Docker/VM/CI
+    app.run(host="0.0.0.0", port=5000)
