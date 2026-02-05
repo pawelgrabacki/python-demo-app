@@ -4,7 +4,24 @@ pipeline {
       CLOUDSDK_CORE_PROJECT='jenkins-gcloud-486320'
   }
   stages {
-    stage('test') {
+
+
+   // checking SCM
+     
+     stages {
+   
+   stage('Checkout') {
+  steps {
+    git branch: 'main',
+        url: 'https://github.com/pawelgrabacki/python-demo-app.git'
+  }
+}
+    
+    
+   /* 
+    
+    
+    stage('cloud') {
       steps {
         withCredentials([file(credentialsId: 'gcloud-creds', variable: 'GCLOUD_CREDS')]) {
           sh '''
@@ -16,4 +33,6 @@ pipeline {
       }
     }
   }
+
+  */
 }
