@@ -16,7 +16,7 @@ pipeline {
         git branch: "${BRANCH}", url: "${REPO_URL}"
       }
     }
-
+/*
     stage('Build Docker image') {
       steps {
         sh """
@@ -24,8 +24,19 @@ pipeline {
           docker tag ${DOCKERHUB_REPO}:${IMAGE_TAG} ${DOCKERHUB_REPO}:latest
         """
       }
-    }
+      
 
+
+    }
+    */
+       stage('Build Docker (main only)') {
+      when { branch 'main' }
+      steps {
+        sh """
+          docker build -t ${DOCKERHUB_REPO}:${IMAGE_TAG} .
+          docker tag ${DOCKERHUB_REPO}:${IMAGE_TAG} ${DOCKERHUB_REPO}:latest
+        """
+      }
     stage('List images') {
       steps {
         sh "docker images | grep ${DOCKERHUB_REPO} || true"
