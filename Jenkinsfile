@@ -18,10 +18,17 @@ pipeline {
   stages {
 
     stage('Checkout') {
-      steps {
-        git branch: "${BRANCH}", url: "${REPO_URL}"
-      }
-    }
+  steps {
+    checkout([$class: 'GitSCM',
+      branches: [[name: 'refs/heads/main']],
+      userRemoteConfigs: [[
+        url: "${REPO_URL}",
+        refspec: '+refs/heads/main:refs/remotes/origin/main'
+      ]],
+      extensions: [[$class: 'PruneStaleBranch']]
+    ])
+  }
+}
 
     stage('Build Docker image') {
       steps {
