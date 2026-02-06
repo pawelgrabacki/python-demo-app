@@ -15,7 +15,7 @@ def hello():
             <h1>Hello from Flask</h1>
 
             <h3>
-              Hello World from GCP Compute instance with Docker Image containing simple Python/Flask app that was created form Github Repo
+              Hello World from GCP Compute instance with Docker Image containing simple Python/Flask app that was created form Github Repo.
               <br>
               Paweł Grabacki - 15939
             </h3>
@@ -33,13 +33,16 @@ def hello():
                 dockerhub/pawelgrabacki/python-demo-app
               </a></li>
             </ul>
-            <p>Update #1<p>
 
-
-
+            <p>Update #1</p>
         </body>
     </html>
     """
+
+
+@app.route("/health")
+def health():
+    return "ok", 200
 
 
 if __name__ == "__main__":
