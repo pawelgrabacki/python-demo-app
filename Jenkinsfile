@@ -10,8 +10,8 @@ pipeline {
 
     // GCE settings
     GCE_ZONE     = 'europe-central2-a'
-    GCE_INSTANCE = 'flask-app-vm'
-    GCE_TAG      = 'flask-app'
+    GCE_INSTANCE = 'python-demo-app-vm'
+    GCE_TAG      = 'python-demo-app'
     GCE_FW_RULE  = 'allow-flask-5000'
   }
 
@@ -67,7 +67,7 @@ pipeline {
             gcloud config set project "${CLOUDSDK_CORE_PROJECT}"
             gcloud config set compute/zone "${GCE_ZONE}"
 
-            # Create firewall rule once (opens port 5000 to VMs with tag flask-app)
+            # Create firewall rule once (opens port 5000 to VMs with tag python-demo-app)
             if ! gcloud compute firewall-rules describe "${GCE_FW_RULE}" >/dev/null 2>&1; then
               gcloud compute firewall-rules create "${GCE_FW_RULE}" \\
                 --allow tcp:5000 \\
