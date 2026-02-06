@@ -28,16 +28,7 @@ pipeline {
 
 
     }
-    /*
-       stage('Build Docker (main only)') {
-      when { branch 'main' }
-      steps {
-        sh """
-          docker build -t ${DOCKERHUB_REPO}:${IMAGE_TAG} .
-          docker tag ${DOCKERHUB_REPO}:${IMAGE_TAG} ${DOCKERHUB_REPO}:latest
-        """
-      }
-      */
+   
     stage('List images') {
       steps {
         sh "docker images | grep ${DOCKERHUB_REPO} || true"
@@ -60,7 +51,9 @@ pipeline {
       }
     }
     stage('Deploy to GCE (update container)') {
-  when { branch 'main' }
+  when {
+    expression { env.BRANCH == 'main' }
+  }
   steps {
     withCredentials([file(credentialsId: 'gcloud-creds', variable: 'GCLOUD_CREDS')]) {
       sh """
