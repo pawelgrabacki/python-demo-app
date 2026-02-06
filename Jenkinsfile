@@ -58,9 +58,7 @@ pipeline {
 
     // GCP deployment
     stage('Deploy to GCE (create or update container VM)') {
-      when {
-        expression { env.BRANCH == 'main' }
-      }
+      when { expression { env.BRANCH == 'main' } }
       steps {
         withCredentials([file(credentialsId: 'gcloud-creds', variable: 'GCLOUD_CREDS')]) {
           sh '''
@@ -85,12 +83,14 @@ pipeline {
                 --machine-type=e2-micro \
                 --tags="'"${GCE_TAG}"'" \
                 --container-image="'"${DOCKERHUB_REPO}"':latest" \
+                --container-env=BUILD_NUMBER=$BUILD_NUMBER \
                 --container-restart-policy=always
             else
               gcloud compute instances add-tags "'"${GCE_INSTANCE}"'" --tags="'"${GCE_TAG}"'" || true
 
               gcloud beta compute instances update-container "'"${GCE_INSTANCE}"'" \
-                --container-image="'"${DOCKERHUB_REPO}"':latest"
+                --container-image="'"${DOCKERHUB_REPO}"':latest" \
+                --container-env=BUILD_NUMBER=$BUILD_NUMBER
             fi
 
             echo "VM external IP:"
