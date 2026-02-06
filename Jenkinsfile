@@ -12,7 +12,7 @@ pipeline {
     GCE_ZONE     = 'europe-central2-a'
     GCE_INSTANCE = 'python-demo-app-vm'
     GCE_TAG      = 'python-demo-app'
-    GCE_FW_RULE  = 'allow-flask-5000'
+    GCE_FW_RULE  = 'allow-flask-80'
   }
 
   stages {
@@ -23,6 +23,7 @@ pipeline {
       }
     }
 
+    // Creating Docker image with python/flask app
     stage('Build Docker image') {
       steps {
         sh """
@@ -38,6 +39,7 @@ pipeline {
       }
     }
 
+    // Uploading created image to Docker Hub
     stage('Push to Docker Hub') {
       steps {
         withCredentials([usernamePassword(
@@ -54,45 +56,47 @@ pipeline {
       }
     }
 
+    // GCP deployment
     stage('Deploy to GCE (create or update container VM)') {
       when {
         expression { env.BRANCH == 'main' }
       }
       steps {
         withCredentials([file(credentialsId: 'gcloud-creds', variable: 'GCLOUD_CREDS')]) {
-          sh """
+          sh '''
             set -eu
 
             gcloud auth activate-service-account --key-file="$GCLOUD_CREDS"
-            gcloud config set project "${CLOUDSDK_CORE_PROJECT}"
-            gcloud config set compute/zone "${GCE_ZONE}"
+            gcloud config set project "'"${CLOUDSDK_CORE_PROJECT}"'"
+            gcloud config set compute/zone "'"${GCE_ZONE}"'"
 
-            # Create firewall rule once (opens port 5000 to VMs with tag python-demo-app)
-            if ! gcloud compute firewall-rules describe "${GCE_FW_RULE}" >/dev/null 2>&1; then
-              gcloud compute firewall-rules create "${GCE_FW_RULE}" \\
-                --allow tcp:80 \\
-                --direction INGRESS \\
-                --target-tags "${GCE_TAG}"
+            # Open port 80 to the VM (tag: python-demo-app)
+            if ! gcloud compute firewall-rules describe "'"${GCE_FW_RULE}"'" >/dev/null 2>&1; then
+              gcloud compute firewall-rules create "'"${GCE_FW_RULE}"'" \
+                --allow tcp:80 \
+                --direction INGRESS \
+                --source-ranges 0.0.0.0/0 \
+                --target-tags "'"${GCE_TAG}"'"
             fi
 
-           
-            if ! gcloud compute instances describe "${GCE_INSTANCE}" >/dev/null 2>&1; then
-              gcloud beta compute instances create-with-container "${GCE_INSTANCE}" \\
-                --machine-type=e2-micro \\
-                --tags="${GCE_TAG}" \\
-                --container-image="${DOCKERHUB_REPO}:latest" \\
+            # Create VM if missing, otherwise update container
+            if ! gcloud compute instances describe "'"${GCE_INSTANCE}"'" >/dev/null 2>&1; then
+              gcloud beta compute instances create-with-container "'"${GCE_INSTANCE}"'" \
+                --machine-type=e2-micro \
+                --tags="'"${GCE_TAG}"'" \
+                --container-image="'"${DOCKERHUB_REPO}"':latest" \
                 --container-restart-policy=always
             else
-              gcloud compute instances add-tags "${GCE_INSTANCE}" --tags="${GCE_TAG}" || true
+              gcloud compute instances add-tags "'"${GCE_INSTANCE}"'" --tags="'"${GCE_TAG}"'" || true
 
-              gcloud beta compute instances update-container "${GCE_INSTANCE}" \\
-                --container-image="${DOCKERHUB_REPO}:latest"
+              gcloud beta compute instances update-container "'"${GCE_INSTANCE}"'" \
+                --container-image="'"${DOCKERHUB_REPO}"':latest"
             fi
 
             echo "VM external IP:"
-            gcloud compute instances describe "${GCE_INSTANCE}" \\
+            gcloud compute instances describe "'"${GCE_INSTANCE}"'" \
               --format='get(networkInterfaces[0].accessConfigs[0].natIP)'
-          """
+          '''
         }
       }
     }
