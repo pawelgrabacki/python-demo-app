@@ -6,6 +6,7 @@ app = Flask(__name__)
 
 @app.route("/")
 def hello():
+    build_number = os.getenv("BUILD_NUMBER", "unknown")
 
     return f"""
     <html>
@@ -19,7 +20,7 @@ def hello():
               Paweł Grabacki
             </h3>
 
-            <p><b>Jenkins Build Number:</b></p>
+            <p><b>Jenkins Build Number:</b> {build_number}</p>
 
             <p>This is HTML returned directly from main.py</p>
 
