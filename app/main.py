@@ -34,7 +34,6 @@ def hello():
               </a></li>
             </ul>
 
-            <footer>demo footer</footer>
         </body>
     </html>
     """
