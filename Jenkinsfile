@@ -1,6 +1,12 @@
 pipeline {
   agent any
 
+  options {
+    timestamps()
+    // Avoid two builds deploying over each other
+    disableConcurrentBuilds()
+  }
+
   environment {
     CLOUDSDK_CORE_PROJECT = 'jenkins-gcloud-486320'
     REPO_URL       = 'https://github.com/pawelgrabacki/python-demo-app.git'
@@ -23,10 +29,10 @@ pipeline {
       }
     }
 
-    // Creating Docker image with python/flask app
     stage('Build Docker image') {
       steps {
         sh """
+          set -euo pipefail
           docker build -t ${DOCKERHUB_REPO}:${IMAGE_TAG} .
           docker tag ${DOCKERHUB_REPO}:${IMAGE_TAG} ${DOCKERHUB_REPO}:latest
         """
@@ -39,7 +45,6 @@ pipeline {
       }
     }
 
-    // Uploading created image to Docker Hub
     stage('Push to Docker Hub') {
       steps {
         withCredentials([usernamePassword(
@@ -48,57 +53,72 @@ pipeline {
           passwordVariable: 'DOCKER_PASS'
         )]) {
           sh """
+            set -euo pipefail
             echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
             docker push ${DOCKERHUB_REPO}:${IMAGE_TAG}
             docker push ${DOCKERHUB_REPO}:latest
+            docker logout || true
           """
         }
       }
     }
 
-    // GCP deployment
     stage('Deploy to GCE (create or update container VM)') {
+      // Works for Multibranch (BRANCH_NAME) and non-multibranch (BRANCH env)
       when {
-        expression { env.BRANCH == 'main' }
+        expression {
+          (env.BRANCH_NAME ?: env.BRANCH) == 'main'
+        }
       }
       steps {
         withCredentials([file(credentialsId: 'gcloud-creds', variable: 'GCLOUD_CREDS')]) {
           sh '''
-            set -eu
+            set -euo pipefail
 
             gcloud auth activate-service-account --key-file="$GCLOUD_CREDS"
-            gcloud config set project "'"${CLOUDSDK_CORE_PROJECT}"'"
-            gcloud config set compute/zone "'"${GCE_ZONE}"'"
+            gcloud config set project "$CLOUDSDK_CORE_PROJECT"
+            gcloud config set compute/zone "$GCE_ZONE"
 
             # Open port 80 to the VM (tag: python-demo-app)
-            if ! gcloud compute firewall-rules describe "'"${GCE_FW_RULE}"'" >/dev/null 2>&1; then
-              gcloud compute firewall-rules create "'"${GCE_FW_RULE}"'" \
+            if ! gcloud compute firewall-rules describe "$GCE_FW_RULE" >/dev/null 2>&1; then
+              gcloud compute firewall-rules create "$GCE_FW_RULE" \
                 --allow tcp:80 \
                 --direction INGRESS \
                 --source-ranges 0.0.0.0/0 \
-                --target-tags "'"${GCE_TAG}"'"
+                --target-tags "$GCE_TAG"
             fi
 
+            IMAGE="$DOCKERHUB_REPO:$IMAGE_TAG"
+
             # Create VM if missing, otherwise update container
-            if ! gcloud compute instances describe "'"${GCE_INSTANCE}"'" >/dev/null 2>&1; then
-              gcloud beta compute instances create-with-container "'"${GCE_INSTANCE}"'" \
+            if ! gcloud compute instances describe "$GCE_INSTANCE" >/dev/null 2>&1; then
+              gcloud beta compute instances create-with-container "$GCE_INSTANCE" \
                 --machine-type=e2-micro \
-                --tags="'"${GCE_TAG}"'" \
-                --container-image="'"${DOCKERHUB_REPO}"':latest" \
+                --tags="$GCE_TAG" \
+                --container-image="$IMAGE" \
                 --container-restart-policy=always
             else
-              gcloud compute instances add-tags "'"${GCE_INSTANCE}"'" --tags="'"${GCE_TAG}"'" || true
+              gcloud compute instances add-tags "$GCE_INSTANCE" --tags="$GCE_TAG" || true
 
-              gcloud beta compute instances update-container "'"${GCE_INSTANCE}"'" \
-                --container-image="'"${DOCKERHUB_REPO}"':latest"
+              gcloud beta compute instances update-container "$GCE_INSTANCE" \
+                --container-image="$IMAGE"
             fi
 
             echo "VM external IP:"
-            gcloud compute instances describe "'"${GCE_INSTANCE}"'" \
+            gcloud compute instances describe "$GCE_INSTANCE" \
               --format='get(networkInterfaces[0].accessConfigs[0].natIP)'
           '''
         }
       }
+    }
+  }
+
+  post {
+    always {
+      // Best-effort cleanup so agents don’t fill up with old layers
+      sh """
+        docker image prune -f || true
+      """
     }
   }
 }
