@@ -63,7 +63,7 @@ pipeline {
           sh """
             set -eu
 
-            gcloud auth activate-service-account --key-file="\\$GCLOUD_CREDS"
+            gcloud auth activate-service-account --key-file="$GCLOUD_CREDS"
             gcloud config set project "${CLOUDSDK_CORE_PROJECT}"
             gcloud config set compute/zone "${GCE_ZONE}"
 
