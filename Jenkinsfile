@@ -24,11 +24,8 @@ pipeline {
           docker tag ${DOCKERHUB_REPO}:${IMAGE_TAG} ${DOCKERHUB_REPO}:latest
         """
       }
-      
-
-
     }
-   
+
     stage('List images') {
       steps {
         sh "docker images | grep ${DOCKERHUB_REPO} || true"
@@ -50,26 +47,59 @@ pipeline {
         }
       }
     }
-    stage('Deploy to GCE (update container)') {
-  when {
-    expression { env.BRANCH == 'main' }
-  }
-  steps {
-    withCredentials([file(credentialsId: 'gcloud-creds', variable: 'GCLOUD_CREDS')]) {
-      sh """
-        gcloud auth activate-service-account --key-file="$GCLOUD_CREDS"
-        gcloud config set project ${CLOUDSDK_CORE_PROJECT}
-        gcloud config set compute/zone europe-central2-a
 
-        gcloud beta compute instances update-container flask-app-vm \\
-          --container-image=pawelgrabacki/python-demo-app:latest
-      """
+    stage('Deploy to GCE (create or update container VM)') {
+      when {
+        expression { env.BRANCH == 'main' }
+      }
+      steps {
+        withCredentials([file(credentialsId: 'gcloud-creds', variable: 'GCLOUD_CREDS')]) {
+          sh """
+            set -euo pipefail
+
+            PROJECT="${CLOUDSDK_CORE_PROJECT}"
+            ZONE="europe-central2-a"
+            INSTANCE="flask-app-vm"
+            TAG="flask-app"
+            FIREWALL_RULE="allow-flask-5000"
+            IMAGE="${DOCKERHUB_REPO}:latest"
+
+            gcloud auth activate-service-account --key-file="$GCLOUD_CREDS"
+            gcloud config set project "$PROJECT"
+            gcloud config set compute/zone "$ZONE"
+
+            # Create firewall rule once (opens port 5000 to VMs with tag flask-app)
+            if ! gcloud compute firewall-rules describe "$FIREWALL_RULE" >/dev/null 2>&1; then
+              gcloud compute firewall-rules create "$FIREWALL_RULE" \\
+                --allow tcp:5000 \\
+                --direction INGRESS \\
+                --target-tags "$TAG"
+            fi
+
+            # Create VM if missing, otherwise update its container image
+            if ! gcloud compute instances describe "$INSTANCE" >/dev/null 2>&1; then
+              gcloud beta compute instances create-with-container "$INSTANCE" \\
+                --machine-type=e2-micro \\
+                --tags="$TAG" \\
+                --container-image="$IMAGE" \\
+                --container-restart-policy=always
+            else
+              # Ensure it has the right tag (safe even if already present)
+              gcloud compute instances add-tags "$INSTANCE" --tags="$TAG" || true
+
+              gcloud beta compute instances update-container "$INSTANCE" \\
+                --container-image="$IMAGE"
+            fi
+
+            # Print the external IP so you can open it in browser
+            gcloud compute instances describe "$INSTANCE" \\
+              --format='get(networkInterfaces[0].accessConfigs[0].natIP)'
+          """
+        }
+      }
     }
-  }
-}
 
-
-    /*gcli test
+    /*
     stage('cloud') {
       steps {
         withCredentials([file(credentialsId: 'gcloud-creds', variable: 'GCLOUD_CREDS')]) {
