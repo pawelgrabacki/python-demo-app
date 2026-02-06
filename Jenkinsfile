@@ -70,12 +70,12 @@ pipeline {
             # Create firewall rule once (opens port 5000 to VMs with tag python-demo-app)
             if ! gcloud compute firewall-rules describe "${GCE_FW_RULE}" >/dev/null 2>&1; then
               gcloud compute firewall-rules create "${GCE_FW_RULE}" \\
-                --allow tcp:5000 \\
+                --allow tcp:80 \\
                 --direction INGRESS \\
                 --target-tags "${GCE_TAG}"
             fi
 
-            # Create VM if missing, otherwise update its container image
+           
             if ! gcloud compute instances describe "${GCE_INSTANCE}" >/dev/null 2>&1; then
               gcloud beta compute instances create-with-container "${GCE_INSTANCE}" \\
                 --machine-type=e2-micro \\
