@@ -61,7 +61,7 @@ pipeline {
       steps {
         withCredentials([file(credentialsId: 'gcloud-creds', variable: 'GCLOUD_CREDS')]) {
           sh """
-            set -euo pipefail
+            set -eu
 
             gcloud auth activate-service-account --key-file="\\$GCLOUD_CREDS"
             gcloud config set project "${CLOUDSDK_CORE_PROJECT}"
