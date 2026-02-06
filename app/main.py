@@ -15,7 +15,7 @@ def hello():
             <h1>Hello from Flask</h1>
 
             <h3>
-              Hello World from GCP Compute instance with Docker Image containing simple Python/Flask app
+              Hello World from GCP Compute instance with Docker Image containing simple Python/Flask app that was created form Github Repo
               <br>
               Paweł Grabacki - 15939
             </h3>
