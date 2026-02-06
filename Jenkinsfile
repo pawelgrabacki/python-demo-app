@@ -23,6 +23,7 @@ pipeline {
       }
     }
 
+    // Creating Docker image with python/flask app
     stage('Build Docker image') {
       steps {
         sh """
@@ -38,6 +39,7 @@ pipeline {
       }
     }
 
+    // Uploading created image to Docker Hub
     stage('Push to Docker Hub') {
       steps {
         withCredentials([usernamePassword(
@@ -54,6 +56,7 @@ pipeline {
       }
     }
 
+    // GCP deployment
     stage('Deploy to GCE (create or update container VM)') {
       when { expression { env.BRANCH == 'main' } }
 
@@ -63,6 +66,7 @@ pipeline {
             set -eu
 
             gcloud auth activate-service-account --key-file="$GCLOUD_CREDS"
+<<<<<<< HEAD
             gcloud config set project "$CLOUDSDK_CORE_PROJECT"
             gcloud config set compute/zone "$GCE_ZONE"
 
@@ -93,6 +97,36 @@ pipeline {
 
             echo "VM external IP:"
             gcloud compute instances describe "$GCE_INSTANCE" \
+=======
+            gcloud config set project "'"${CLOUDSDK_CORE_PROJECT}"'"
+            gcloud config set compute/zone "'"${GCE_ZONE}"'"
+
+            # Open port 80 to the VM (tag: python-demo-app)
+            if ! gcloud compute firewall-rules describe "'"${GCE_FW_RULE}"'" >/dev/null 2>&1; then
+              gcloud compute firewall-rules create "'"${GCE_FW_RULE}"'" \
+                --allow tcp:80 \
+                --direction INGRESS \
+                --source-ranges 0.0.0.0/0 \
+                --target-tags "'"${GCE_TAG}"'"
+            fi
+
+            # Create VM if missing, otherwise update container
+            if ! gcloud compute instances describe "'"${GCE_INSTANCE}"'" >/dev/null 2>&1; then
+              gcloud beta compute instances create-with-container "'"${GCE_INSTANCE}"'" \
+                --machine-type=e2-micro \
+                --tags="'"${GCE_TAG}"'" \
+                --container-image="'"${DOCKERHUB_REPO}"':latest" \
+                --container-restart-policy=always
+            else
+              gcloud compute instances add-tags "'"${GCE_INSTANCE}"'" --tags="'"${GCE_TAG}"'" || true
+
+              gcloud beta compute instances update-container "'"${GCE_INSTANCE}"'" \
+                --container-image="'"${DOCKERHUB_REPO}"':latest"
+            fi
+
+            echo "VM external IP:"
+            gcloud compute instances describe "'"${GCE_INSTANCE}"'" \
+>>>>>>> 54c2082 (update)
               --format='get(networkInterfaces[0].accessConfigs[0].natIP)'
           '''
         }
