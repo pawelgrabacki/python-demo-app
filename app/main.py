@@ -5,9 +5,8 @@ app = Flask(__name__)
 
 @app.route("/")
 def hello():
-    return "Hello World from Jenkins + Flask 🚀 15939"
+    return "Hello World from Jenkins + Flask 15939" "Paweł Grabacki"
 
 
 if __name__ == "__main__":
-    # Listen on all interfaces so it works in Docker/VM/CI
     app.run(host="0.0.0.0", port=5000)
