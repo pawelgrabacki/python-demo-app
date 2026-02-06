@@ -58,8 +58,24 @@ pipeline {
         }
       }
     }
+    stage('Deploy to GCE (update container)') {
+  when { branch 'main' }
+  steps {
+    withCredentials([file(credentialsId: 'gcloud-creds', variable: 'GCLOUD_CREDS')]) {
+      sh """
+        gcloud auth activate-service-account --key-file="$GCLOUD_CREDS"
+        gcloud config set project ${CLOUDSDK_CORE_PROJECT}
+        gcloud config set compute/zone europe-central2-a
 
-    /*
+        gcloud beta compute instances update-container flask-app-vm \\
+          --container-image=pawelgrabacki/python-demo-app:latest
+      """
+    }
+  }
+}
+
+
+    /*gcli test
     stage('cloud') {
       steps {
         withCredentials([file(credentialsId: 'gcloud-creds', variable: 'GCLOUD_CREDS')]) {
