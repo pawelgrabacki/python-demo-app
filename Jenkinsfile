@@ -65,8 +65,8 @@ pipeline {
             IMAGE="${DOCKERHUB_REPO}:latest"
 
             gcloud auth activate-service-account --key-file="$GCLOUD_CREDS"
-            gcloud config set project "$PROJECT"
-            gcloud config set compute/zone "$ZONE"
+            gcloud config set project "\$PROJECT"
+            gcloud config set compute/zone "\$ZONE"
 
             # Create firewall rule once (opens port 5000 to VMs with tag flask-app)
             if ! gcloud compute firewall-rules describe "$FIREWALL_RULE" >/dev/null 2>&1; then
