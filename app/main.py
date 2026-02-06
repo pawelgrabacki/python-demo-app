@@ -5,7 +5,10 @@ app = Flask(__name__)
 
 @app.route("/")
 def hello():
-    return "Hello World from Jenkins + Flask 15939" "Paweł Grabacki"
+    return (
+        "Hello World from GCP Compute instance with Docker Image containing simple Flask app 15939"
+        "Paweł Grabacki"
+    )
 
 
 if __name__ == "__main__":
