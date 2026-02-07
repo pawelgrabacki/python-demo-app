@@ -35,6 +35,7 @@ def hello():
             </ul>
 
             <p>Update #1</p>
+            <p>Update #2</p>
         </body>
     </html>
     """
